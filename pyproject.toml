@@ -1,8 +1,8 @@
 [project]
 name = "shiradl"
 description = "Download music from YouTube, YouTube Music and Soundcloud, with great metadata and little effort."
-requires-python = ">=3.8"
-authors =  [{ name = "KraXen72" }, { name = "glomatico" }]
+requires-python = ">=3.11"
+authors = [{ name = "KraXen72" }, { name = "glomatico" }]
 dependencies = [
 	"click",
 	"yt-dlp >= 2025.03.27",
@@ -10,7 +10,7 @@ dependencies = [
 	"mediafile",
 	"pillow",
 	"requests_cache",
-	"python-dateutil"
+	"python-dateutil",
 ]
 readme = "README.md"
 dynamic = ["version"]
@@ -21,6 +21,11 @@ repository = "https://github.com/KraXen72/shira"
 [build-system]
 requires = ["flit_core"]
 build-backend = "flit_core.buildapi"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.0",
+]
 
 [project.scripts]
 shiradl = "shiradl.cli:cli"
