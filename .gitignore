@@ -5,3 +5,8 @@ __pycache__
 *.wav
 *.flac
 *.sqlite
+*.m4a
+*.mka
+/out
+
+.ruff_cache
