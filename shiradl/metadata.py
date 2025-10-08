@@ -53,20 +53,12 @@ def get_year(
 
 
 def dash_split(info, title_key: str, obj):
-    split_title = info[title_key].split(" - ")
+    artist, title, *_ = re.split(r" [-–—] ", info[title_key])
 
-    classic_ordering = True
-    for keyword in ["animatic", "remix"]:
-        if keyword in info[title_key].lower():
-            obj["artist"].append(info["channel"])
-            obj["title"].append(
-                split_title[0] if keyword in split_title[1].lower() else split_title[0]
-            )
-            classic_ordering = False
-            break
-    if classic_ordering:
-        obj["artist"].append(split_title[0])
-        obj["title"].append(split_title[1])
+    title = re.sub(r'"(.*?)"', r"\1", title)
+
+    obj["artist"].extend(re.split(r" & |, ", artist))
+    obj["title"].append(title)
 
     return obj
 
