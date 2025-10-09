@@ -8,5 +8,5 @@ __pycache__
 *.m4a
 *.mka
 /out
-
+result
 .ruff_cache

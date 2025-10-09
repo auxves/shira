@@ -15,6 +15,8 @@
       ];
       perSystem = { system, config, pkgs, ... }:
         {
+          packages.default = pkgs.callPackage ./pkg.nix { };
+
           devShells.default = with pkgs; mkShell {
             packages = [ uv python312 ffmpeg ];
           };
