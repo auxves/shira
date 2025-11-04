@@ -113,8 +113,7 @@ class Dl:
             if not ytmusic_watch_playlist["tracks"][0].get("album"):  # type: ignore
                 return None
             return ytmusic_watch_playlist
-        except Exception as ex:
-            print(ex)
+        except Exception:
             return None
 
     def search_track(self, title):

@@ -101,7 +101,7 @@ def youtube_extractor(info):
     md_keys = {
         "title": ["title", "track", "alt_title"],
         "artist": ["artist", "channel", "creator"],
-        "albumartist": [],
+        "albumartist": ["album_artist"],
         "album": ["album"],
     }
     add_values = {
