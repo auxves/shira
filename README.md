@@ -69,16 +69,15 @@ The config file is created automatically when you run shira for the first time a
 
 | Command line argument / Config file key | Description | Default value |
 | --- | --- | --- |
-| `-f`, `--final-path` / `final_path` | Path where the downloaded files will be saved. | `./YouTube Music` |
+| `-f`, `--final-path` / `final_path` | Path where the downloaded files will be saved. | `.` |
 | `-t`, `--temp-path` / `temp_path` | Path where the temporary files will be saved. | `./temp` |
 | `-c`, `--cookies-location` / `cookies_location` | Location of the cookies file. | `null` |
 | `--ffmpeg-location` / `ffmpeg_location` | Location of the FFmpeg binary. | `ffmpeg` |
 | `--config-location` / - | Location of the config file. | `<home folder>/.shiradl/config.json` |
-| `-i`, `--itag` / `itag` | Itag (audio quality/format). [More info](#itags) | `140` |
 | `--cover-size` / `cover_size` | Size of the cover.  `size >= 0` and `<= 16383` | `1200` |
 | `--cover-format` / `cover_format` | Format of the cover. `jpg` or `png` | `jpg` |
 | `--cover-quality` / `cover_quality` | JPEG quality of the cover.  [1<=x<=100] | `94` |
-| `--cover-img` / `cover_img` | Path to image or folder of images. [More info](#cover-img)  | `null` |
+| `--cover-img` / `cover_img` | Path to image. [More info](#cover-img)  | `null` |
 | `--cover-crop` / `cover_crop` |  'crop' takes a 1:1 square from the center, pad always pads top & bottom. `auto`, `crop` or `pad` | `auto` - [More info](#smartcrop) |
 | `--template-folder` / `template_folder` | Template of the album folders as a format string. | `{albumartist}/{album}` |
 | `--template-file` / `template_file` | Template of the track files as a format string. | `{track:02d} {title}` |
@@ -90,17 +89,6 @@ The config file is created automatically when you run shira for the first time a
 | `-p`, `--print-exceptions` / `print_exceptions` | Print exceptions. | `false` |
 | `-u`, `--url-txt` / - | Read URLs as location of text files containing URLs. | `false` |
 | `-n`, `--no-config-file` / - | Don't use the config file. | `false` |
-| `-w`, `--single-folder` / - | Wrap singles in their own folder instead of placing them directly into artist's folder. | `false` |
-
-### Itags
-The following itags are available:
-- `140` (128kbps AAC) - default, because it's the result of `bestaudio/best` on a free account
-- `141` (256kbps AAC) - use if you have premium alongside `--cookies-location`
-- `251` (128kbps Opus) - most stuff will error with `Failed to check URL 1/1`. Better to use `140`
-  
-SoundCloud will always download in 128kbps MP3
-- SoundCloud also offers OPUS, which is currently not supported. [Some people were complaining](https://www.factmag.com/2018/01/04/soundcloud-mp3-opus-format-sound-quality-change-64-128-kbps/) that the quality is worse  
-- [These are questionable claims](https://old.reddit.com/r/Techno/comments/bzodax/soundcloud_compression_128kbps_mp3_vs_64_kbps/) at best, but better safe than sorry.   
 
 ### Tag variables
 The following variables can be used in the template folder/file and/or in the `exclude_tags` list:  
