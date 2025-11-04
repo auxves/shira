@@ -371,8 +371,8 @@ class MBSong:
 
 
 def musicbrainz_enrich_tags(
-    tags: Tags, exclude_tags: list[str] = [], use_mbid_data=True
-):  # noqa: B006
+    tags: Tags, exclude_tags: list[str] = [], use_mbid_data=False
+):
     """takes in a tags dict, adds mbid tags and (by default) also other mb info, returns it"""
 
     mb = MBSong(title=tags["title"], artist=str(tags["artist"]), album=tags["album"])

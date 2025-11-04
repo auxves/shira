@@ -73,7 +73,6 @@ The config file is created automatically when you run shira for the first time a
 | `-t`, `--temp-path` / `temp_path` | Path where the temporary files will be saved. | `./temp` |
 | `-c`, `--cookies-location` / `cookies_location` | Location of the cookies file. | `null` |
 | `--ffmpeg-location` / `ffmpeg_location` | Location of the FFmpeg binary. | `ffmpeg` |
-| `--config-location` / - | Location of the config file. | `<home folder>/.shiradl/config.json` |
 | `--cover-size` / `cover_size` | Size of the cover.  `size >= 0` and `<= 16383` | `1200` |
 | `--cover-format` / `cover_format` | Format of the cover. `jpg` or `png` | `jpg` |
 | `--cover-quality` / `cover_quality` | JPEG quality of the cover.  [1<=x<=100] | `94` |
@@ -88,11 +87,10 @@ The config file is created automatically when you run shira for the first time a
 | `-o`, `--overwrite` / `overwrite` | Overwrite existing files. | `false` |
 | `-p`, `--print-exceptions` / `print_exceptions` | Print exceptions. | `false` |
 | `-u`, `--url-txt` / - | Read URLs as location of text files containing URLs. | `false` |
-| `-n`, `--no-config-file` / - | Don't use the config file. | `false` |
 
 ### Tag variables
 The following variables can be used in the template folder/file and/or in the `exclude_tags` list:  
-`title`, `album`, `artist`, `albumartist`, `track`, `tracktotal`, `year`, `date`, `cover`, `comments`, `lyrics`, `media_type`, `rating`, `track`, `tracktotal`, `mb_releasetrackid`, `mb_releasegroupid`, `mb_artistid`, `mb_albumartistid`  
+`title`, `album`, `artist`, `albumartist`, `track`, `tracktotal`, `year`, `date`, `cover`, `comments`, `media_type`, `rating`, `track`, `tracktotal`, `mb_releasetrackid`, `mb_releasegroupid`, `mb_artistid`, `mb_albumartistid`  
 To exclude all musicbrainz tags, you can add `mb*` to `exclude_tags`. (This does not work for other types of tags).
 
 ### Cover formats

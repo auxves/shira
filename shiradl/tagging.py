@@ -14,8 +14,8 @@ from requests_cache import CachedSession
 
 AVG_THRESHOLD = 10
 CHANNEL_THRESHOLD = 15
-MV_SEPARATOR = "/"  # " & " # TODO make this configurable
-MV_SEPARATOR_VISUAL = " & "
+MV_SEPARATOR = ", "
+MV_SEPARATOR_VISUAL = ", "
 req = CachedSession("shira", expire_after=3600, use_cache_dir=True)
 
 
@@ -33,7 +33,6 @@ class Tags(TypedDict):
     cover_bytes: NotRequired[bytes]
     rating: NotRequired[int]
     comments: NotRequired[str]
-    lyrics: NotRequired[str]
 
 
 fallback_mv_keys = ["artist", "albumartist"]

@@ -1,4 +1,3 @@
-import json
 import logging
 import shutil
 import tempfile
@@ -17,45 +16,6 @@ logging.basicConfig(
     format="[%(levelname)-8s %(asctime)s] %(message)s",
     datefmt="%H:%M:%S",
 )
-
-EXCLUDED_PARAMS = (
-    "urls",
-    "config_location",
-    "url_txt",
-    "no_config_file",
-    "version",
-    "help",
-)
-
-
-def write_default_config_file(ctx: click.Context):
-    ctx.params["config_location"].parent.mkdir(parents=True, exist_ok=True)
-    config_file = {
-        param.name: param.default
-        for param in ctx.command.params
-        if param.name not in EXCLUDED_PARAMS
-    }
-    with open(ctx.params["config_location"], "w") as f:
-        f.write(json.dumps(config_file, indent=4))
-
-
-def no_config_callback(
-    ctx: click.Context, param: click.Parameter, no_config_file: bool
-):
-    if no_config_file:
-        return ctx
-    if not ctx.params["config_location"].exists():
-        write_default_config_file(ctx)
-    with open(ctx.params["config_location"], "r") as f:
-        config_file = dict(json.load(f))
-    for param in ctx.command.params:
-        if (
-            config_file.get(param.name) is not None
-            and ctx.get_parameter_source(param.name)
-            != click.core.ParameterSource.COMMANDLINE
-        ):  # type: ignore
-            ctx.params[param.name] = param.type_cast_value(ctx, config_file[param.name])  # type: ignore
-    return ctx
 
 
 @click.command()
@@ -86,12 +46,6 @@ def no_config_callback(
     type=Path,
     default="ffmpeg",
     help="Location of the FFmpeg binary.",
-)
-@click.option(
-    "--config-location",
-    type=Path,
-    default=Path.home() / ".shiradl" / "config.json",
-    help="Location of the config file.",
 )
 @click.option(
     "--cover-size",
@@ -162,13 +116,6 @@ def no_config_callback(
     help="Read URLs as location of text files containing URLs.",
 )
 @click.option(
-    "--no-config-file",
-    "-n",
-    is_flag=True,
-    callback=no_config_callback,
-    help="Don't use the config file.",
-)
-@click.option(
     "--use-playlist-name",
     type=bool,
     is_flag=True,
@@ -182,7 +129,6 @@ def cli(
     temp_path: Path,
     cookies_location: Path,
     ffmpeg_location: Path,
-    config_location: Path,
     cover_size: int,
     cover_format: str,
     cover_quality: int,
@@ -197,7 +143,6 @@ def cli(
     overwrite: bool,
     print_exceptions: bool,
     url_txt: bool,
-    no_config_file: bool,
     use_playlist_name: bool,
 ):
     logger = logging.getLogger(__name__)
@@ -250,7 +195,10 @@ def cli(
     error_count = 0
     for i, url in enumerate(download_queue):
         for j, track in enumerate(url):
-            track.update(dl.get_ydl_extract_info(track["url"]))
+            track_url = (
+                track.get("original_url") or track.get("webpage_url") or track["url"]
+            )
+            track = dl.get_ydl_extract_info(track_url)
             logger.info(
                 f'Downloading "{track["title"]}" (track {j + 1}/{len(url)} from URL {i + 1}/{len(download_queue)})'
             )
@@ -283,11 +231,7 @@ def cli(
                 final_location = dl.get_final_location(tags)
                 logger.debug(f'Final location is "{final_location}"')
                 if not final_location.exists() or overwrite:
-                    temp_location = dl.download(
-                        track.get("original_url")
-                        or track.get("webpage_url")
-                        or track["url"]
-                    )
+                    temp_location = dl.download(track_url)
                     logger.debug("Applying tags")
                     metadata_applier(tags, temp_location, dl.exclude_tags)
                     logger.debug("Moving to final location")
