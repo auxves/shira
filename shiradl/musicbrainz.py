@@ -371,7 +371,7 @@ class MBSong:
 
 
 def musicbrainz_enrich_tags(
-    tags: Tags, skip_encode=False, exclude_tags: list[str] = [], use_mbid_data=True
+    tags: Tags, exclude_tags: list[str] = [], use_mbid_data=True
 ):  # noqa: B006
     """takes in a tags dict, adds mbid tags and (by default) also other mb info, returns it"""
 
@@ -404,12 +404,9 @@ def musicbrainz_enrich_tags(
 
     for key, tag in mb.get_mbid_tags().items():
         if tag is not None and key not in exclude_tags:
-            if skip_encode is False:
-                tags[key] = (
-                    [t.encode("utf-8") for t in tag]
-                    if isinstance(tag, list)
-                    else tag.encode("utf-8")
-                )
-            else:
-                tags[key] = tag
+            tags[key] = (
+                [t.encode("utf-8") for t in tag]
+                if isinstance(tag, list)
+                else tag.encode("utf-8")
+            )
     return tags

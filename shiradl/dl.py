@@ -19,7 +19,6 @@ class Dl:
         temp_path: Path,
         cookies_location: Path,
         ffmpeg_location: Path,
-        itag: str,
         cover_size: int,
         cover_format: str,
         cover_quality: int,
@@ -36,7 +35,6 @@ class Dl:
         self.temp_path = temp_path
         self.cookies_location = cookies_location
         self.ffmpeg_location = ffmpeg_location
-        self.itag = itag
         self.cover_size = cover_size
         self.cover_format = cover_format
         self.cover_quality = cover_quality
@@ -51,19 +49,18 @@ class Dl:
 
         self.dump_json = dump_json
         self.tags: Tags | None = None
-        self.soundcloud = False
         self.default_ydl_opts = {
             "progress": True,
             "quiet": True,
             "no_warnings": True,
             "fixup": "never",
+            "format": "m4a/ba[ext=m4a]/ba[ext=mp3]",
         }
         self.use_playlist_name = use_playlist_name
 
     def get_ydl_extract_info(self, url) -> dict:
         ydl_opts: dict[str, str | bool] = {
-            "quiet": True,
-            "no_warnings": True,
+            **self.default_ydl_opts,
             "extract_flat": True,
         }
         if self.cookies_location is not None:
@@ -87,26 +84,19 @@ class Dl:
             json.dump(ydl_extract_info, f, indent=4, ensure_ascii=False)
             f.close()
 
-        if "soundcloud" in ydl_extract_info["webpage_url"]:
-            # f = open("info.json", "w", encoding="utf8")
-            # json.dump(ydl_extract_info, f, indent=4, ensure_ascii=False)
-            # f.close()
-
-            # raise Exception("Not a YouTube URL")
-            if str(self.final_path) == "./YouTube Music":
-                self.final_path = Path("./SoundCloud")
-            self.soundcloud = True
         if "MPREb_" in ydl_extract_info["webpage_url_basename"]:
             ydl_extract_info = self.get_ydl_extract_info(ydl_extract_info["url"])
-        if "playlist" in ydl_extract_info["webpage_url_basename"]:
+
+        if "entries" in ydl_extract_info:
             if self.use_playlist_name:
                 playlist_name = ydl_extract_info.get("title", "Unknown Playlist")
                 self.final_path = self.final_path / self.get_sanizated_string(
                     playlist_name, True
                 )
             download_queue.extend(ydl_extract_info["entries"])
-        if "watch" in ydl_extract_info["webpage_url_basename"] or self.soundcloud:
+        else:
             download_queue.append(ydl_extract_info)
+
         return download_queue
 
     def get_artist(self, artist_list):
@@ -118,19 +108,18 @@ class Dl:
         )
 
     def get_ytmusic_watch_playlist(self, video_id):
-        if self.soundcloud:
-            return None
-        ytmusic_watch_playlist = self.ytmusic.get_watch_playlist(video_id)
-        if ytmusic_watch_playlist is None or isinstance(ytmusic_watch_playlist, str):
-            raise Exception(f"Track is not available (None or string) {video_id}")
+        try:
+            ytmusic_watch_playlist = self.ytmusic.get_watch_playlist(video_id)
 
-        if not ytmusic_watch_playlist["tracks"][0]["length"] and ytmusic_watch_playlist[
-            "tracks"
-        ][0].get("album"):  # type: ignore
-            raise Exception(f"Track is not available {video_id}")
-        if not ytmusic_watch_playlist["tracks"][0].get("album"):  # type: ignore
+            if not ytmusic_watch_playlist["tracks"][0][
+                "length"
+            ] and ytmusic_watch_playlist["tracks"][0].get("album"):  # type: ignore
+                raise Exception(f"Track is not available {video_id}")
+            if not ytmusic_watch_playlist["tracks"][0].get("album"):  # type: ignore
+                return None
+            return ytmusic_watch_playlist
+        except Exception:
             return None
-        return ytmusic_watch_playlist
 
     def search_track(self, title):
         return self.ytmusic.search(title, "songs")[0]["videoId"]
@@ -165,22 +154,10 @@ class Dl:
             "tracktotal": ytmusic_album["trackCount"],
             "date": _date,
             "year": _year,
+            "ext": str(track["ext"]),
             "cover_url": f"{ytmusic_watch_playlist['tracks'][0]['thumbnail'][0]['url'].split('=')[0]}"
             + f"=w{self.cover_size}-l{self.cover_quality}-{'rj' if self.cover_format == 'jpg' else 'rp'}",
         }
-
-        for i, video in enumerate(
-            self.get_ydl_extract_info(
-                f"https://www.youtube.com/playlist?list={str(ytmusic_album['audioPlaylistId'])}"
-            )["entries"]
-        ):
-            if video["id"] == video_id:
-                tags["track"] = i + 1
-                break
-            if ytmusic_watch_playlist["lyrics"]:
-                lyrics_data = self.ytmusic.get_lyrics(ytmusic_watch_playlist["lyrics"])
-                if lyrics_data is not None and "lyrics" in lyrics_data:
-                    tags["lyrics"] = lyrics_data["lyrics"]
 
         self.tags = tags
         return self.tags
@@ -196,38 +173,9 @@ class Dl:
                 dirty_string = dirty_string[: self.truncate - 4]
         return dirty_string.strip()
 
-    def get_temp_location(self, song_id):
-        if self.soundcloud:
-            return self.temp_path / f"{song_id}.mp3"
-        return self.temp_path / f"{song_id}.m4a"
-
-    def get_fixed_location(self, song_id):
-        if self.soundcloud:
-            return self.temp_path / f"{song_id}_fixed.mp3"
-        return self.temp_path / f"{song_id}_fixed.m4a"
-
-    def get_final_location(
-        self, tags, extension=".m4a", is_single=False, single_folders=False
-    ):
+    def get_final_location(self, tags):
         final_location_folder = self.template_folder.split("/")
         final_location_file = self.template_file.split("/")
-
-        if (
-            is_single
-            and not single_folders
-            and self.template_folder.endswith("/{album}")
-        ):
-            folder = self.template_folder[:-8]
-            if len(folder.strip()) == 0:
-                folder = "./"
-            final_location_folder = folder.split("/")
-            if self.template_file.startswith("{track:02d} "):
-                locfile = self.template_file[12:]
-                final_location_file = (
-                    "{title}".split("/")
-                    if locfile.strip() == ""
-                    else locfile.split("/")
-                )
 
         filename_safe_tags: dict[str, str] = {}
         for (
@@ -254,7 +202,7 @@ class Dl:
             self.get_sanizated_string(
                 final_location_file[-1].format(**filename_safe_tags), False
             )
-            + extension
+            + f".{tags['ext']}"
         ]
         return self.final_path.joinpath(*final_location_folder).joinpath(
             *final_location_file
@@ -263,33 +211,20 @@ class Dl:
     def get_cover_location(self, final_location):
         return final_location.parent / f"Cover.{self.cover_format}"
 
-    def download(self, video_id, temp_location):
+    def download(self, url) -> Path:
         ydl_opts = {
             **self.default_ydl_opts,
-            "format": self.itag,
-            "outtmpl": str(temp_location),
+            "outtmpl": str(self.temp_path / "%(title)s.%(ext)s"),
         }
 
         if self.cookies_location is not None:
             ydl_opts["cookiefile"] = str(self.cookies_location)
-        with YoutubeDL(ydl_opts) as ydl:
-            ydl.download("music.youtube.com/watch?v=" + video_id)
 
-    def download_souncloud(self, url, temp_location):
-        # opus is obviously a better format, however:
-        # it's debatable whether soundcloud's mp3 is better than their opus
-        # because they might just use lower quality audio for opus (there have been complaints)
-        # this can be possibly later changed, for now we'll stick to mp3
-        ydl_opts = {
-            **self.default_ydl_opts,
-            "format": "mp3",
-            "outtmpl": str(temp_location),
-        }
-
-        if self.cookies_location is not None:
-            ydl_opts["cookiefile"] = str(self.cookies_location)
         with YoutubeDL(ydl_opts) as ydl:
-            ydl.download(url)
+            info = ydl.extract_info(url, download=True)
+            filepath = ydl.prepare_filename(info)
+
+        return Path(filepath)
 
     def fixup(self, temp_location, fixed_location):
         fixup = [self.ffmpeg_location, "-loglevel", "error", "-i", temp_location]
@@ -300,10 +235,6 @@ class Dl:
             [*fixup, "-movflags", "+faststart", "-c", "copy", fixed_location],
             check=True,
         )
-
-    def move_to_final_location(self, fixed_location, final_location):
-        final_location.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(fixed_location, final_location)
 
     def save_cover(self, tags, cover_location):
         with open(cover_location, "wb") as f:

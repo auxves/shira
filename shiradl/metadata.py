@@ -1,14 +1,11 @@
 import datetime
-import random
 import re
 from collections import Counter
-from pathlib import Path
 
 from requests_cache import CachedSession
 
 from .tagging import Tags, get_1x1_cover
 
-TIGER_SINGLE = "tiger:is_single:true"
 req = CachedSession("shira", expire_after=60, use_cache_dir=True)
 
 
@@ -131,7 +128,7 @@ def soundcloud_extractor(info):
         "title": ["title", "fulltitle"],
         "artist": ["uploader"],
         "albumartist": ["uploader"],
-        "album": [],
+        "album": ["album"],
     }
     add_values = {
         "title": [],
@@ -178,9 +175,7 @@ def get_youtube_maxres_thumbnail(info):
 
 
 # based on the original https://github.com/KraXen72/tiger
-def smart_metadata(
-    info, temp_location: Path, cover_format="JPEG", cover_crop_method="auto"
-):
+def smart_metadata(info, cover_format="JPEG", cover_crop_method="auto"):
     """
     grabs as much info as it can from all over the place
     gets the most likely tag and returns a dict
@@ -197,13 +192,10 @@ def smart_metadata(
         "tracktotal": 1,
         "year": "",
         "date": "",
+        "ext": info["ext"],
         "cover_url": thumbnail,
         "cover_bytes": get_1x1_cover(
             thumbnail,
-            temp_location,
-            info.get("id")
-            or clean_title(info.get("title"))
-            or str(random.randint(0, 9) * "16"),
             cover_format,
             cover_crop_method,
         ),
@@ -263,9 +255,6 @@ def smart_metadata(
         md_keys["album"], info, add_values["album"]
     )
     md["year"], md["date"] = get_year(info)
-
-    if "(Single)" in md["album"]:
-        md["comments"] = TIGER_SINGLE  # TODO remove this later?
 
     return md
 

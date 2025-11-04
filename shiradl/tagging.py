@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import functools
-import os
 from io import BytesIO
 from pathlib import Path
 from statistics import mean, stdev
@@ -30,6 +29,7 @@ class Tags(TypedDict):
     year: str
     date: str
     cover_url: str
+    ext: str
     cover_bytes: NotRequired[bytes]
     rating: NotRequired[int]
     comments: NotRequired[str]
@@ -47,7 +47,7 @@ def metadata_applier(
     handle.delete()
     # print({**tags, "cover_bytes": ""})
     for k, v in tags.items():
-        if k in exclude_tags or k in ["cover_url", "cover_bytes"]:
+        if k in exclude_tags or k in ["cover_url", "cover_bytes", "ext"]:
             continue
         if k == "date":
             v = parser.isoparse(str(v)).date()
@@ -82,27 +82,6 @@ def metadata_applier(
 @functools.lru_cache
 def get_cover(url):
     return req.get(url).content
-
-
-def get_cover_local(file_path: Path, id_or_url: str, is_soundcloud: bool):
-    """
-    reads a local image as bytes.
-    if given a directory, finds the matching image by filename stem matching id_or_url
-    """
-    if file_path.is_file():
-        return file_path.read_bytes()
-    elif file_path.is_dir():
-        for filename in os.listdir(file_path):
-            fp = file_path / filename
-            if (not fp.is_file()) or (
-                fp.suffix.lower() not in [".jpg", ".jpeg", ".png"]
-            ):
-                continue
-            if (is_soundcloud and id_or_url.split("/")[-1] == fp.stem) or (
-                is_soundcloud is False and id_or_url == fp.stem
-            ):
-                return fp.read_bytes()
-    return None
 
 
 def get_dominant_color(pil_img: Image.Image) -> tuple[int, int, int, int]:
@@ -143,7 +122,7 @@ def determine_image_crop(image_bytes: bytes):
     """
     pil_img = Image.open(BytesIO(image_bytes))
     filt_image = pil_img.filter(ImageFilter.SMOOTH).convert(
-        "P", palette=Image.ADAPTIVE, colors=64
+        "P", palette=Image.Palette.ADAPTIVE, colors=64
     )
     rgb_filt_image = filt_image.convert("RGB")
 
@@ -180,8 +159,6 @@ def determine_image_crop(image_bytes: bytes):
 
 def get_1x1_cover(
     url: str,
-    temp_location: Path,
-    uniqueid: str,
     cover_format="JPEG",
     cover_crop_method="auto",
 ):

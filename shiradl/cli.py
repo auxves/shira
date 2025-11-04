@@ -1,6 +1,7 @@
 import json
 import logging
 import shutil
+import tempfile
 from http.cookiejar import LoadError as CookieLoadError
 from pathlib import Path
 
@@ -8,9 +9,9 @@ import click
 
 from . import __version__
 from .dl import Dl
-from .metadata import TIGER_SINGLE, smart_metadata
+from .metadata import smart_metadata
 from .musicbrainz import musicbrainz_enrich_tags
-from .tagging import get_cover_local, metadata_applier
+from .tagging import metadata_applier
 
 logging.basicConfig(
     format="[%(levelname)-8s %(asctime)s] %(message)s",
@@ -63,14 +64,14 @@ def no_config_callback(
     "--final-path",
     "-f",
     type=Path,
-    default="./YouTube Music",
+    default=".",
     help="Path where the downloaded files will be saved.",
 )
 @click.option(
     "--temp-path",
     "-t",
     type=Path,
-    default="./temp",
+    default=None,
     help="Path where the temporary files will be saved.",
 )
 @click.option(
@@ -92,7 +93,6 @@ def no_config_callback(
     default=Path.home() / ".shiradl" / "config.json",
     help="Location of the config file.",
 )
-@click.option("--itag", "-i", type=str, default="140", help="Itag (audio quality).")
 @click.option(
     "--cover-size",
     type=click.IntRange(0, 16383),
@@ -169,12 +169,6 @@ def no_config_callback(
     help="Don't use the config file.",
 )
 @click.option(
-    "--single-folder",
-    "-w",
-    is_flag=True,
-    help="Wrap singles in their own folder instead of placing them directly into artist's folder.",
-)
-@click.option(
     "--use-playlist-name",
     type=bool,
     is_flag=True,
@@ -189,7 +183,6 @@ def cli(
     cookies_location: Path,
     ffmpeg_location: Path,
     config_location: Path,
-    itag: str,
     cover_size: int,
     cover_format: str,
     cover_quality: int,
@@ -205,7 +198,6 @@ def cli(
     print_exceptions: bool,
     url_txt: bool,
     no_config_file: bool,
-    single_folder: bool,
     use_playlist_name: bool,
 ):
     logger = logging.getLogger(__name__)
@@ -225,12 +217,14 @@ def cli(
         urls = tuple(_urls)
     logger.debug("Starting downloader")
 
+    if not temp_path:
+        temp_path = Path(tempfile.mkdtemp())
+
     dl = Dl(
         final_path,
         temp_path,
         cookies_location,
         ffmpeg_location,
-        itag,
         cover_size,
         cover_format,
         cover_quality,
@@ -256,6 +250,7 @@ def cli(
     error_count = 0
     for i, url in enumerate(download_queue):
         for j, track in enumerate(url):
+            track.update(dl.get_ydl_extract_info(track["url"]))
             logger.info(
                 f'Downloading "{track["title"]}" (track {j + 1}/{len(url)} from URL {i + 1}/{len(download_queue)})'
             )
@@ -265,74 +260,39 @@ def cli(
 
                 dl.tags = None
                 tags = None
-                is_single = False
                 if ytmusic_watch_playlist is None:
-                    logger.info(
-                        "No results on YTMusic API, using Tigerv2 to extract metadata"
-                    )
-                    tag_track = track
-                    if "webpage_url_domain" not in track:
-                        tag_track = dl.get_ydl_extract_info(track["url"])
+                    logger.info("Extracting metadata")
                     logger.debug("Starting Tigerv2")
                     tags = smart_metadata(
-                        tag_track,
-                        temp_path,
+                        track,
                         "JPEG" if dl.cover_format == "jpg" else "PNG",
                         cover_crop,
                     )
-                    is_single = tags.get("comments") == TIGER_SINGLE
-                    if is_single:
-                        tags["comments"] = str(
-                            track.get("webpage_url")
-                            or track.get("original_url")
-                            or track.get("url")
-                            or url
-                        )
                 else:
                     tags = dl.get_tags(ytmusic_watch_playlist, track)
-                    is_single = tags["tracktotal"] == 1
+
+                tags["track"] = j + 1
                 logger.debug("Tags applied, fetching MusicBrainz Database")
-                tags = musicbrainz_enrich_tags(tags, dl.soundcloud, dl.exclude_tags)
-                # pprint(tags)
+                tags = musicbrainz_enrich_tags(tags, dl.exclude_tags)
                 logger.debug("Applied MusicBrainz Tags")
                 if cover_img:
-                    local_img_bytes = get_cover_local(
-                        cover_img,
-                        track["url"] if dl.soundcloud else track["id"],
-                        dl.soundcloud,
-                    )
+                    local_img_bytes = cover_img.read_bytes()
                     if local_img_bytes is not None:
                         tags["cover_bytes"] = local_img_bytes
                 logger.debug("Applied cover Image")
-                final_location = dl.get_final_location(
-                    tags,
-                    ".mp3" if dl.soundcloud is True else ".m4a",
-                    is_single,
-                    single_folder,
-                )
+                final_location = dl.get_final_location(tags)
                 logger.debug(f'Final location is "{final_location}"')
-                temp_location = dl.get_temp_location(track["id"])
                 if not final_location.exists() or overwrite:
-                    logger.debug(f'Downloading to "{temp_location}"')
-                    if dl.soundcloud is False:
-                        dl.download(track["id"], temp_location)
-                    else:
-                        dl.download_souncloud(
-                            track.get("original_url") or track["webpage_url"],
-                            temp_location,
-                        )
-
-                    fixed_location = dl.get_fixed_location(track["id"])
-                    logger.debug(f'Remuxing to "{fixed_location}"')
-                    dl.fixup(temp_location, fixed_location)
+                    temp_location = dl.download(
+                        track.get("original_url")
+                        or track.get("webpage_url")
+                        or track["url"]
+                    )
                     logger.debug("Applying tags")
-                    metadata_applier(tags, fixed_location, dl.exclude_tags)
-                    # if dl.soundcloud is False:
-                    # 	tagger_m4a(tags, fixed_location, dl.exclude_tags, dl.cover_format)
-                    # else:
-                    # 	tagger_mp3(tags, fixed_location, dl.exclude_tags, dl.cover_format)
+                    metadata_applier(tags, temp_location, dl.exclude_tags)
                     logger.debug("Moving to final location")
-                    dl.move_to_final_location(fixed_location, final_location)
+                    final_location.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.move(temp_location, final_location)
                 else:
                     logger.warning("File already exists at final location, skipping")
                 if save_cover:
