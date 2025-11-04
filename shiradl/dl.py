@@ -99,13 +99,8 @@ class Dl:
 
         return download_queue
 
-    def get_artist(self, artist_list):
-        if len(artist_list) == 1:
-            return artist_list[0]["name"]
-        return (
-            ", ".join([i["name"] for i in artist_list][:-1])
-            + f" & {artist_list[-1]['name']}"
-        )
+    def get_artists(self, artist_list):
+        return [artist["name"] for artist in artist_list]
 
     def get_ytmusic_watch_playlist(self, video_id):
         try:
@@ -148,8 +143,8 @@ class Dl:
         tags: Tags = {
             "title": clean_title(ytmusic_watch_playlist["tracks"][0]["title"]),
             "album": ytmusic_album["title"],
-            "albumartist": self.get_artist(ytmusic_album["artists"]),
-            "artist": self.get_artist(ytmusic_watch_playlist["tracks"][0]["artists"]),
+            "albumartist": self.get_artists(ytmusic_album["artists"]),
+            "artist": self.get_artists(ytmusic_watch_playlist["tracks"][0]["artists"]),
             "comments": f"https://music.youtube.com/watch?v={video_id}",
             "track": 1,
             "tracktotal": ytmusic_album["trackCount"],

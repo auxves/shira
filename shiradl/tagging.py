@@ -14,8 +14,8 @@ from requests_cache import CachedSession
 
 AVG_THRESHOLD = 10
 CHANNEL_THRESHOLD = 15
-MV_SEPARATOR = ", "
-MV_SEPARATOR_VISUAL = ", "
+MV_SEPARATOR = "/"
+MV_SEPARATOR_VISUAL = " & "
 req = CachedSession("shira", expire_after=3600, use_cache_dir=True)
 
 
