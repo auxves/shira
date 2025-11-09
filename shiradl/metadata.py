@@ -248,7 +248,7 @@ def smart_metadata(info, cover_format="JPEG", cover_crop_method="auto"):
     md["title"] = clean_title(str(md["title"]))
 
     # fallback: title (Single) => album, only if there is no album yet
-    if ("album" not in info) and len(add_values["album"]) == 0:
+    if not info.get("album") and len(add_values["album"]) == 0:
         add_values["album"].append(f"{md['title']} (Single)")
 
     md["album"], others["album"] = smart_tag(
